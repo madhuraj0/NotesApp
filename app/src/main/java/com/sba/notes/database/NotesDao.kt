@@ -10,6 +10,10 @@ interface NotesDao {
 
     @Query("SELECT * from notes ORDER BY date DESC")
     fun getAllNotes(): LiveData<List<Notes>>
+    
+    // New method: Get all notes synchronously (not LiveData) for file syncing
+    @Query("SELECT * from notes ORDER BY date DESC")
+    suspend fun getAllNotesSync(): List<Notes>
 
     @Delete
     suspend fun deleteNote(note: Notes)
@@ -19,6 +23,4 @@ interface NotesDao {
 
     @Update
     suspend fun updateNote(note: Notes)
-
-
 }
