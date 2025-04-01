@@ -13,19 +13,29 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     val allNotes: LiveData<List<Notes>>
 
     init {
-        val notesDao = NotesRoomDatabase.getDatabase(application,viewModelScope).notesDao()
-        repository = NotesRepository(notesDao)
+        val notesDao = NotesRoomDatabase.getDatabase(application, viewModelScope).notesDao()
+        repository = NotesRepository(notesDao, application.applicationContext, viewModelScope)
         allNotes = repository.allNotes
     }
-
 
     fun insertNote(note: Notes) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertNote(note)
     }
+    
     fun deleteNote(note: Notes) = viewModelScope.launch(Dispatchers.IO) {
         repository.deleteNote(note)
     }
+    
     fun deleteAllNote() = viewModelScope.launch(Dispatchers.IO) {
         repository.deleteAllNote()
+    }
+    
+    // Add methods to manually trigger syncs
+    fun syncFromFiles() = viewModelScope.launch(Dispatchers.IO) {
+        repository.syncFromFiles()
+    }
+    
+    fun syncToFiles() = viewModelScope.launch(Dispatchers.IO) {
+        repository.syncToFiles()
     }
 }
