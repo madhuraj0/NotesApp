@@ -12,7 +12,6 @@ import android.widget.RadioButton
 import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
-
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.*
@@ -52,9 +51,11 @@ class AllNotesFragment : Fragment() {
         appPref = activity?.getSharedPreferences(sharedPrefKey, 0)!!
         nightModeStatus = appPref.getInt("NightMode", 3)
 
-
         setTheme(nightModeStatus)
 
+        // Sync with files when the fragment is created (app opened)
+        notesViewModel.syncFromFiles()
+        Log.d("AllNotesFragment", "Syncing notes from files")
 
         val adapter = activity?.applicationContext?.let { NotesAdapter() }
         binding.noteRecycler.adapter = adapter
@@ -64,16 +65,12 @@ class AllNotesFragment : Fragment() {
 
         notesViewModel.allNotes.observe(viewLifecycleOwner, androidx.lifecycle.Observer { notes ->
             adapter?.submitList(notes)
-
-
         })
-
 
         binding.newNoteFAB.setOnClickListener {
             Navigation.findNavController(view)
                 .navigate(R.id.action_allNotesFragment_to_editNoteFragment)
         }
-
 
         val itemTouchHelperCallback = object :
             ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
@@ -82,7 +79,6 @@ class AllNotesFragment : Fragment() {
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-
                 return false
             }
 
@@ -96,17 +92,18 @@ class AllNotesFragment : Fragment() {
                             notesViewModel.insertNote(mNote)
                         }.show()
                 }
-
             }
         }
 
-
         val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
         itemTouchHelper.attachToRecyclerView(binding.noteRecycler)
-
-
     }
 
+    override fun onResume() {
+        super.onResume()
+        // You can also sync when fragment resumes (user returns to the app)
+        notesViewModel.syncFromFiles()
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -131,7 +128,6 @@ class AllNotesFragment : Fragment() {
                     AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY)
             }
         }
-
     }
 
     private fun setThemeDialog() {
@@ -186,16 +182,13 @@ class AllNotesFragment : Fragment() {
                         AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
                     )
                     else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY)
-
                 }
             }
             dialog.dismiss()
         }
-
     }
 
     private fun deleteALLDialog() {
-
         val inflater = LayoutInflater.from(activity)
         val view = inflater.inflate(R.layout.alert_dialog_delete_all, null)
         val slide = view.findViewById<SlideToActView>(R.id.slideConfirm)
@@ -206,16 +199,12 @@ class AllNotesFragment : Fragment() {
         dialog.show()
 
         slide.onSlideCompleteListener = object : SlideToActView.OnSlideCompleteListener {
-
             override fun onSlideComplete(slider: SlideToActView) {
                 Log.d("Test", "Deleted")
-
                 deleteALL()
                 dialog.dismiss()
             }
         }
-
-
     }
 
     private fun deleteALL() {
@@ -224,7 +213,6 @@ class AllNotesFragment : Fragment() {
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-
         inflater.inflate(R.menu.menu, menu)
     }
 
@@ -235,6 +223,4 @@ class AllNotesFragment : Fragment() {
         }
         return super.onOptionsItemSelected(item)
     }
-
-
 }
