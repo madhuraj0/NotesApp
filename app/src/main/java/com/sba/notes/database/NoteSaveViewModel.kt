@@ -8,13 +8,16 @@ import kotlinx.coroutines.launch
 
 class NoteSaveViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: NotesRepository
+    
     init {
-        val notesDao = NotesRoomDatabase.getDatabase(application,viewModelScope).notesDao()
-        repository = NotesRepository(notesDao)
+        val notesDao = NotesRoomDatabase.getDatabase(application, viewModelScope).notesDao()
+        repository = NotesRepository(notesDao, application.applicationContext, viewModelScope)
     }
+    
     fun insertNote(note: Notes) = viewModelScope.launch(Dispatchers.IO) {
         repository.insertNote(note)
     }
+    
     fun updateNote(note: Notes) = viewModelScope.launch(Dispatchers.IO) {
         repository.updateNote(note)
     }
