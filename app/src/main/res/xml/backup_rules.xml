@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Specify files to back up -->
+    <include domain="database" path="note_database"/>
+    <include domain="file" path="Notes"/>
+</full-backup-content>
