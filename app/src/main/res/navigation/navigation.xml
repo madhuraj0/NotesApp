@@ -18,6 +18,7 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
     </fragment>
+    
     <fragment
         android:id="@+id/editNoteFragment"
         android:name="com.sba.notes.EditNoteFragment"
@@ -25,8 +26,8 @@
         tools:layout="@layout/fragment_edit_note">
         <argument
             android:name="updateNote"
-            android:defaultValue="@null"
             app:argType="com.sba.notes.database.Notes"
-            app:nullable="true" />
+            app:nullable="true"
+            android:defaultValue="@null" />
     </fragment>
 </navigation>

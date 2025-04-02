@@ -1,2 +1,34 @@
-rootProject.name='Notes'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+    versionCatalogs {
+        create("libs") {
+            version("kotlin", "1.9.0")
+            version("agp", "8.1.1")
+            version("navigation", "2.7.4")
+            version("room", "2.6.0")
+            version("lifecycle", "2.6.2")
+            version("coroutines", "1.7.3")
+            
+            library("androidx-core", "androidx.core", "core-ktx").version("1.12.0")
+            library("androidx-appcompat", "androidx.appcompat", "appcompat").version("1.6.1")
+            library("androidx-constraintlayout", "androidx.constraintlayout", "constraintlayout").version("2.1.4")
+            library("material", "com.google.android.material", "material").version("1.10.0")
+            library("slidetoact", "com.ncorti", "slidetoact").version("0.9.0")
+        }
+    }
+}
+
+rootProject.name = "Notes"
 include ':app'

@@ -30,12 +30,12 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         repository.deleteAllNote()
     }
     
-    // Add methods to manually trigger syncs
-    fun syncFromFiles() = viewModelScope.launch(Dispatchers.IO) {
+    // Methods to manually trigger syncs
+    fun syncFromFiles() {
         repository.syncFromFiles()
     }
     
-    fun syncToFiles() = viewModelScope.launch(Dispatchers.IO) {
+    fun syncToFiles() {
         repository.syncToFiles()
     }
 }

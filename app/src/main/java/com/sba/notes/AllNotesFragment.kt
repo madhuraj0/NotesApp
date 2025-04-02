@@ -11,9 +11,12 @@ import android.view.*
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.Navigation
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.*
 import com.google.android.material.snackbar.Snackbar
 import com.ncorti.slidetoact.SlideToActView
@@ -21,10 +24,12 @@ import com.sba.notes.database.NotesViewModel
 import com.sba.notes.databinding.FragmentAllNotesBinding
 import kotlin.properties.Delegates
 
+class AllNotesFragment : Fragment(), MenuProvider {
 
-class AllNotesFragment : Fragment() {
-
-    private var fbind: FragmentAllNotesBinding? = null
+    private var _binding: FragmentAllNotesBinding? = null
+    // This property is only valid between onCreateView and onDestroyView
+    private val binding get() = _binding!!
+    
     private lateinit var notesViewModel: NotesViewModel
     private val sharedPrefKey = "appSettings"
     private val nightModeKey = "NightMode"
@@ -32,24 +37,26 @@ class AllNotesFragment : Fragment() {
     lateinit var sharedPrefsEdit: SharedPreferences.Editor
     var nightModeStatus by Delegates.notNull<Int>()
 
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        setHasOptionsMenu(true)
-        return inflater.inflate(R.layout.fragment_all_notes, container, false)
+    ): View {
+        _binding = FragmentAllNotesBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val binding = FragmentAllNotesBinding.bind(view)
-        fbind = binding
-        notesViewModel = ViewModelProvider(this).get(NotesViewModel::class.java)
+        
+        // Setup menu provider using the modern pattern
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+        
+        notesViewModel = ViewModelProvider(this)[NotesViewModel::class.java]
 
-        appPref = activity?.getSharedPreferences(sharedPrefKey, 0)!!
-        nightModeStatus = appPref.getInt("NightMode", 3)
+        appPref = requireActivity().getSharedPreferences(sharedPrefKey, 0)
+        nightModeStatus = appPref.getInt(nightModeKey, 3)
 
         setTheme(nightModeStatus)
 
@@ -57,19 +64,18 @@ class AllNotesFragment : Fragment() {
         notesViewModel.syncFromFiles()
         Log.d("AllNotesFragment", "Syncing notes from files")
 
-        val adapter = activity?.applicationContext?.let { NotesAdapter() }
+        val adapter = NotesAdapter()
         binding.noteRecycler.adapter = adapter
         binding.noteRecycler.setHasFixedSize(true)
         binding.noteRecycler.layoutManager =
             StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
 
-        notesViewModel.allNotes.observe(viewLifecycleOwner, androidx.lifecycle.Observer { notes ->
-            adapter?.submitList(notes)
-        })
+        notesViewModel.allNotes.observe(viewLifecycleOwner) { notes ->
+            adapter.submitList(notes)
+        }
 
         binding.newNoteFAB.setOnClickListener {
-            Navigation.findNavController(view)
-                .navigate(R.id.action_allNotesFragment_to_editNoteFragment)
+            findNavController().navigate(R.id.action_allNotesFragment_to_editNoteFragment)
         }
 
         val itemTouchHelperCallback = object :
@@ -83,15 +89,14 @@ class AllNotesFragment : Fragment() {
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                val mNote = adapter?.getNote(viewHolder.adapterPosition)
-                mNote?.let { notesViewModel.deleteNote(it) }
+                val position = viewHolder.bindingAdapterPosition
+                val mNote = adapter.getNote(position)
+                notesViewModel.deleteNote(mNote)
 
-                if (mNote != null) {
-                    Snackbar.make(view, "Note Deleted", Snackbar.LENGTH_LONG)
-                        .setAction("Undo") {
-                            notesViewModel.insertNote(mNote)
-                        }.show()
-                }
+                Snackbar.make(view, "Note Deleted", Snackbar.LENGTH_LONG)
+                    .setAction("Undo") {
+                        notesViewModel.insertNote(mNote)
+                    }.show()
             }
         }
 
@@ -107,7 +112,7 @@ class AllNotesFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        fbind = null
+        _binding = null
     }
 
     private fun setTheme(nightStatus: Int) {
@@ -122,18 +127,16 @@ class AllNotesFragment : Fragment() {
             }
             else -> {
                 Log.d("AllNoteFrag","System theme SetTheme()")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-                else
-                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY)
+                // MODE_NIGHT_FOLLOW_SYSTEM is now preferred for all API levels
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
             }
         }
     }
 
     private fun setThemeDialog() {
-        val inflater = LayoutInflater.from(activity)
+        val inflater = LayoutInflater.from(requireActivity())
         val view = inflater.inflate(R.layout.alert_dialog_theme_select, null)
-        val dialog = AlertDialog.Builder(activity)
+        val dialog = AlertDialog.Builder(requireActivity())
             .setView(view)
             .create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -141,13 +144,9 @@ class AllNotesFragment : Fragment() {
 
         val themeRadioGroup = view.findViewById<RadioGroup>(R.id.theme_button_group)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            view.findViewById<RadioButton>(R.id.deafultRadioButton).text =
-                getString(R.string.system_default)
-        } else {
-            view.findViewById<RadioButton>(R.id.deafultRadioButton).text =
-                getString(R.string.follow_battery_saver)
-        }
+        // Always use "System default" text since MODE_NIGHT_FOLLOW_SYSTEM is now preferred
+        view.findViewById<RadioButton>(R.id.deafultRadioButton).text =
+            getString(R.string.system_default)
 
         when (nightModeStatus) {
             1 -> view.findViewById<RadioButton>(R.id.lightRadioButton).isChecked = true
@@ -161,14 +160,14 @@ class AllNotesFragment : Fragment() {
                 R.id.lightRadioButton -> {
                     sharedPrefsEdit.putInt(nightModeKey, 1)
                     sharedPrefsEdit.apply()
-                    nightModeStatus=1
+                    nightModeStatus = 1
                     Log.d("AllNoteFrag","Light theme")
                     AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
                 }
                 R.id.darkRadioButton -> {
                     sharedPrefsEdit.putInt(nightModeKey, 2)
                     sharedPrefsEdit.apply()
-                    nightModeStatus=2
+                    nightModeStatus = 2
                     Log.d("AllNoteFrag","Dark theme")
                     AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
                 }
@@ -176,12 +175,9 @@ class AllNotesFragment : Fragment() {
                 R.id.deafultRadioButton -> {
                     sharedPrefsEdit.putInt(nightModeKey, 3)
                     sharedPrefsEdit.apply()
-                    nightModeStatus=3
+                    nightModeStatus = 3
                     Log.d("AllNoteFrag","System theme")
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AppCompatDelegate.setDefaultNightMode(
-                        AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                    )
-                    else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY)
+                    AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
                 }
             }
             dialog.dismiss()
@@ -189,10 +185,10 @@ class AllNotesFragment : Fragment() {
     }
 
     private fun deleteALLDialog() {
-        val inflater = LayoutInflater.from(activity)
+        val inflater = LayoutInflater.from(requireActivity())
         val view = inflater.inflate(R.layout.alert_dialog_delete_all, null)
         val slide = view.findViewById<SlideToActView>(R.id.slideConfirm)
-        val dialog = AlertDialog.Builder(activity)
+        val dialog = AlertDialog.Builder(requireActivity())
             .setView(view)
             .create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -211,16 +207,22 @@ class AllNotesFragment : Fragment() {
         notesViewModel.deleteAllNote()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
-        inflater.inflate(R.menu.menu, menu)
+    // Menu handling using the new MenuProvider interface
+    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+        menuInflater.inflate(R.menu.menu, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.delete_all_menu -> deleteALLDialog()
-            R.id.dark_mode_menu -> setThemeDialog()
+    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+        return when (menuItem.itemId) {
+            R.id.delete_all_menu -> {
+                deleteALLDialog()
+                true
+            }
+            R.id.dark_mode_menu -> {
+                setThemeDialog()
+                true
+            }
+            else -> false
         }
-        return super.onOptionsItemSelected(item)
     }
 }
